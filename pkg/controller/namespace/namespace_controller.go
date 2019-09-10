@@ -150,7 +150,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
-	// Reconcile NetNamespace
+	// Reconcile NetNamespace add egressIP
 	if instance.Annotations[microsgmentationAnnotation] == "true" {
 		if egressIP, ok := instance.Annotations[egressIP]; ok {
 			netnamespace := &networkv1.NetNamespace{
@@ -163,17 +163,25 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 
 			err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), netnamespace)
 			if err != nil {
-				log.Error(err, "unable to update NetNamespace", "NetNamespace", netnamespace)
+				log.Error(err, "unable to update NetNamespace adding egress", "NetNamespace", netnamespace)
 				return r.manageError(err, instance)
 			}
 		}
 	} else {
-		err = r.GetClient().Delete(context.TODO(), netns)
+		// remove egressIP
+		netnamespace := &networkv1.NetNamespace{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "NetNamespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: instance.Name},
+			NetName:    instance.Name,
+			EgressIPs:  []string{},
+			NetID:      netns.NetID,
+		}
+		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), netnamespace)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return reconcile.Result{}, nil
 			}
-			log.Error(err, "unable to delete NetNamespace", "NetNamespace", netns)
+			log.Error(err, "unable to update NetNamespace removing egress", "NetNamespace", netns)
 			return r.manageError(err, instance)
 		}
 	}
