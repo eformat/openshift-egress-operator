@@ -13,7 +13,6 @@ import (
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	corev1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -95,14 +94,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// FIXME - NetNamespace EgressHosts
 	// Watch for changes to secondary resource and requeue the owner Namespace
-	err = c.Watch(&source.Kind{Type: &networking.NetworkPolicy{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &corev1.Namespace{},
-	})
-	if err != nil {
-		return err
-	}
+	// err = c.Watch(&source.Kind{Type: &networking.NetworkPolicy{}}, &handler.EnqueueRequestForOwner{
+	// 	IsController: true,
+	// 	OwnerType:    &corev1.Namespace{},
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -142,7 +142,15 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
-	// Fill in reconcile NetNamespace
+	// Get Previous NetNamespace
+	netns := &networkv1.NetNamespace{}
+	err = r.GetClient().Get(context.TODO(), types.NamespacedName{Name: request.NamespacedName.Name}, netns)
+	if err != nil {
+		log.Error(err, "unable to find existing NetNamespace", "NetNamespace", netns)
+		return reconcile.Result{}, nil
+	}
+
+	// Reconcile NetNamespace
 	if instance.Annotations[microsgmentationAnnotation] == "true" {
 		if egressIP, ok := instance.Annotations[egressIP]; ok {
 			netnamespace := &networkv1.NetNamespace{
@@ -150,9 +158,9 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 				ObjectMeta: metav1.ObjectMeta{Name: instance.Name},
 				NetName:    instance.Name,
 				EgressIPs:  []string{egressIP},
+				NetID:      netns.NetID,
 			}
 
-			//if _, err := master.networkClient.NetworkV1().NetNamespaces().Update(netnamespace); err != nil {
 			err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), netnamespace)
 			if err != nil {
 				log.Error(err, "unable to update NetNamespace", "NetNamespace", netnamespace)
@@ -160,18 +168,12 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 			}
 		}
 	} else {
-		netnamespace := &networkv1.NetNamespace{
-			TypeMeta:   metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "NetNamespace"},
-			ObjectMeta: metav1.ObjectMeta{Name: instance.Name},
-			NetName:    instance.Name,
-			EgressIPs:  []string{egressIP},
-		}
-		err = r.GetClient().Delete(context.TODO(), netnamespace)
+		err = r.GetClient().Delete(context.TODO(), netns)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return reconcile.Result{}, nil
 			}
-			log.Error(err, "unable to delete NetNamespace", "NetNamespace", netnamespace)
+			log.Error(err, "unable to delete NetNamespace", "NetNamespace", netns)
 			return r.manageError(err, instance)
 		}
 	}
