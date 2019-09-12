@@ -2,9 +2,7 @@ module github.com/eformat/openshift-egress-operator
 
 require (
 	github.com/NYTimes/gziphandler v1.0.1 // indirect
-	github.com/eformat/microsegmentation-operator v0.0.0-20190910014402-d5c93723d635
-	github.com/openshift/api v3.9.0+incompatible
-	github.com/openshift/client-go v3.9.0+incompatible
+	github.com/openshift/api v3.9.1-0.20190911180052-9f80b7806f58+incompatible
 	github.com/operator-framework/operator-sdk v0.10.1-0.20190909224314-b3c2cc0bef95
 	github.com/redhat-cop/operator-utils v0.0.0-20190827162636-51e6b0c32776
 	github.com/spf13/pflag v1.0.3

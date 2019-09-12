@@ -3,6 +3,7 @@ package namespace
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -169,24 +170,54 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 	} else {
 		// remove egressIP
-		netnamespace := &networkv1.NetNamespace{
-			TypeMeta:   metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "NetNamespace"},
-			ObjectMeta: metav1.ObjectMeta{Name: instance.Name},
-			NetName:    instance.Name,
-			EgressIPs:  []string{},
-			NetID:      netns.NetID,
-		}
-		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), netnamespace)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return reconcile.Result{}, nil
+		if egressIP, ok := instance.Annotations[egressIP]; ok {
+			netnamespace := &networkv1.NetNamespace{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "NetNamespace"},
+				ObjectMeta: metav1.ObjectMeta{Name: instance.Name},
+				NetName:    instance.Name,
+				EgressIPs:  []string{},
+				NetID:      netns.NetID,
 			}
-			log.Error(err, "unable to update NetNamespace removing egress", "NetNamespace", netns)
-			return r.manageError(err, instance)
+			err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), netnamespace)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return reconcile.Result{}, nil
+				}
+				log.Error(err, "unable to update NetNamespace removing egress "+egressIP, "NetNamespace", netns)
+				return r.manageError(err, instance)
+			}
 		}
 	}
 
 	// Fill in reconcile for HostSubnet
+	if instance.Annotations[microsgmentationAnnotation] == "true" {
+		if egressHosts, ok := instance.Annotations[egressHosts]; ok {
+			if egressCIDR, ok := instance.Annotations[egressCIDR]; ok {
+				listOfEgress := strings.Split(egressHosts, ",")
+				for _, egressHost := range listOfEgress {
+					/*
+						      apiVersion: "network.openshift.io/v1",
+									kind: "HostSubnet",
+									egressCIDRs: [ egressCIDR ],
+									host: eh,
+									metadata: {
+										name: eh
+									}
+					*/
+					hostSubnet := &networkv1.HostSubnet{
+						TypeMeta:    metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "HostSubnet"},
+						ObjectMeta:  metav1.ObjectMeta{Name: egressHost},
+						Host:        egressHost,
+						EgressCIDRs: []string{egressCIDR},
+					}
+					log.Error(err, "unable to update NetNamespace removing egress "+egressIP, "NetNamespace", hostSubnet)
+				}
+			}
+		}
+
+	} else {
+		// remove HostSubnet
+	}
 
 	return reconcile.Result{}, nil
 }
