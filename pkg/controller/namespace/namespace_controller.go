@@ -169,7 +169,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 			}
 		}
 	} else {
-		// remove egressIP
+		// Remove egressIP
 		if egressIP, ok := instance.Annotations[egressIP]; ok {
 			netnamespace := &networkv1.NetNamespace{
 				TypeMeta:   metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "NetNamespace"},
@@ -189,34 +189,66 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 	}
 
-	// Fill in reconcile for HostSubnet
+	// Reconcile for HostSubnet add CIDR
 	if instance.Annotations[microsgmentationAnnotation] == "true" {
 		if egressHosts, ok := instance.Annotations[egressHosts]; ok {
 			if egressCIDR, ok := instance.Annotations[egressCIDR]; ok {
 				listOfEgress := strings.Split(egressHosts, ",")
 				for _, egressHost := range listOfEgress {
-					/*
-						      apiVersion: "network.openshift.io/v1",
-									kind: "HostSubnet",
-									egressCIDRs: [ egressCIDR ],
-									host: eh,
-									metadata: {
-										name: eh
-									}
-					*/
+					// Get Previous HostSubnet
+					hostsn := &networkv1.HostSubnet{}
+					err = r.GetClient().Get(context.TODO(), types.NamespacedName{Name: egressHost}, hostsn)
+					if err != nil {
+						log.Error(err, "unable to find existing HostSubnet "+egressHost, "HostSubnet", hostsn)
+						return reconcile.Result{}, nil
+					}
+
 					hostSubnet := &networkv1.HostSubnet{
 						TypeMeta:    metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "HostSubnet"},
 						ObjectMeta:  metav1.ObjectMeta{Name: egressHost},
 						Host:        egressHost,
 						EgressCIDRs: []string{egressCIDR},
+						Subnet:      hostsn.Subnet,
+						HostIP:      hostsn.HostIP,
 					}
-					log.Error(err, "unable to update NetNamespace removing egress "+egressIP, "NetNamespace", hostSubnet)
+					err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), hostSubnet)
+					if err != nil {
+						log.Error(err, "unable to update HostSubnet adding egress "+egressCIDR, "HostSubnet", hostSubnet)
+						return r.manageError(err, instance)
+					}
 				}
 			}
 		}
-
 	} else {
-		// remove HostSubnet
+		// Remove HostSubnet
+		if egressHosts, ok := instance.Annotations[egressHosts]; ok {
+			if egressCIDR, ok := instance.Annotations[egressCIDR]; ok {
+				listOfEgress := strings.Split(egressHosts, ",")
+				for _, egressHost := range listOfEgress {
+					// Get Previous HostSubnet
+					hostsn := &networkv1.HostSubnet{}
+					err = r.GetClient().Get(context.TODO(), types.NamespacedName{Name: egressHost}, hostsn)
+					if err != nil {
+						log.Error(err, "unable to find existing HostSubnet "+egressHost, "HostSubnet", hostsn)
+						return reconcile.Result{}, nil
+					}
+
+					hostSubnet := &networkv1.HostSubnet{
+						TypeMeta:    metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "HostSubnet"},
+						ObjectMeta:  metav1.ObjectMeta{Name: egressHost},
+						Host:        egressHost,
+						EgressCIDRs: []string{},
+						Subnet:      hostsn.Subnet,
+						HostIP:      hostsn.HostIP,
+					}
+					err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), hostSubnet)
+					if err != nil {
+						log.Error(err, "unable to update HostSubnet removing egress "+egressCIDR, "HostSubnet", hostSubnet)
+						return r.manageError(err, instance)
+					}
+				}
+			}
+		}
 	}
 
 	return reconcile.Result{}, nil
