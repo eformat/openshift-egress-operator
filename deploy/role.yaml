@@ -29,7 +29,7 @@ rules:
   - configmaps
   - pods
   verbs:
-  - "*" 
+  - "*"
 #Metrics  
 - apiGroups:
   - ""
