@@ -1,30 +1,53 @@
-kind: Role
+kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: openshift-egress-operator
 rules:
 - apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "*" 
+- apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - hostsubnets
+  - netnamespaces
+  verbs:
+  - "*"   
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: openshift-egress-operator
+rules:
+# leader election   
+- apiGroups:
   - ""
   resources:
-  - pods
-  - services
-  - services/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - events
   - configmaps
-  - secrets
+  - pods
   verbs:
-  - "*"
+  - "*" 
+#Metrics  
 - apiGroups:
-  - apps
+  - ""
   resources:
-  - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
+  - services
+  - namespaces
   verbs:
   - "*"
+#Metrics  
+- apiGroups:
+  - "apps"
+  resources:
+  - replicasets
+  - deployments
+  verbs: 
+  - "get"
+  - "list"
+# Metrics  
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -32,6 +55,7 @@ rules:
   verbs:
   - "get"
   - "create"
+# Metrics  
 - apiGroups:
   - apps
   resources:
@@ -40,15 +64,4 @@ rules:
   - openshift-egress-operator
   verbs:
   - "update"
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  verbs:
-  - get
+

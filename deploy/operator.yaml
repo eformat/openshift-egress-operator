@@ -16,7 +16,7 @@ spec:
       containers:
         - name: openshift-egress-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: quay.io/eformat/openshift-egress-operator:latest
           command:
           - openshift-egress-operator
           imagePullPolicy: Always
