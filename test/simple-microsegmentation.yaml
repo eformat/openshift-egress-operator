@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    microsegmentation-operator.redhat-cop.io/microsegmentation: "true"  
+    microsegmentation-operator.redhat-cop.io/inbound-namespace-labels: name=abc,frontend-user=customers,name=default
+    microsegmentation-operator.redhat-cop.io/allow-from-self: "true"
+    microsegmentation-operator.redhat-cop.io/egress-ip: 192.168.5.154
+    microsegmentation-operator.redhat-cop.io/egress-cidr: 192.168.5.0/24
+    microsegmentation-operator.redhat-cop.io/egress-hosts: infra-priv-auth0,infra-priv-auth1
+    openshift.io/node-selector: network-zone=private-private-auth,node-role.kubernetes.io/compute=true
+  name: test
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    microsegmentation-operator.redhat-cop.io/microsegmentation: "true"
+  name: test1
+  namespace: test
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  - name: https1
+    port: 4431
+    protocol: TCP
+    targetPort: 8431    
+  selector:
+    app: console
+    component: ui
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    microsegmentation-operator.redhat-cop.io/microsegmentation: "true"
+    microsegmentation-operator.redhat-cop.io/additional-inbound-ports: 123/TCP,456/UDP
+    microsegmentation-operator.redhat-cop.io/inbound-pod-labels: app=gateway,application=3scale
+    microsegmentation-operator.redhat-cop.io/outbound-pod-labels: app=database,application=db2    
+    microsegmentation-operator.redhat-cop.io/outbound-ports: 789/TCP,012/UDP
+  name: test2
+  namespace: test  
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  - name: https1
+    port: 4431
+    protocol: TCP
+    targetPort: 8431    
+  selector:
+    app: console
+    component: ui      

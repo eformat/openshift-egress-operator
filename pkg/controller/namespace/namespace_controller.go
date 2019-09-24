@@ -220,31 +220,33 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 			}
 		}
 	} else {
-		// Remove HostSubnet
 		if egressHosts, ok := instance.Annotations[egressHosts]; ok {
 			if egressCIDR, ok := instance.Annotations[egressCIDR]; ok {
 				listOfEgress := strings.Split(egressHosts, ",")
 				for _, egressHost := range listOfEgress {
-					// Get Previous HostSubnet
+					// Get Previous HostSubnet. Need to wait for kube to have removed netnamespace above
+					time.Sleep(1000 * time.Millisecond)
 					hostsn := &networkv1.HostSubnet{}
 					err = r.GetClient().Get(context.TODO(), types.NamespacedName{Name: egressHost}, hostsn)
 					if err != nil {
 						log.Error(err, "unable to find existing HostSubnet "+egressHost, "HostSubnet", hostsn)
 						return reconcile.Result{}, nil
 					}
-
-					hostSubnet := &networkv1.HostSubnet{
-						TypeMeta:    metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "HostSubnet"},
-						ObjectMeta:  metav1.ObjectMeta{Name: egressHost},
-						Host:        egressHost,
-						EgressCIDRs: []string{},
-						Subnet:      hostsn.Subnet,
-						HostIP:      hostsn.HostIP,
-					}
-					err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), hostSubnet)
-					if err != nil {
-						log.Error(err, "unable to update HostSubnet removing egress "+egressCIDR, "HostSubnet", hostSubnet)
-						return r.manageError(err, instance)
+					// Only remove if no other egress IPs hosted on this node
+					if len(hostsn.EgressIPs) == 0 {
+						hostSubnet := &networkv1.HostSubnet{
+							TypeMeta:    metav1.TypeMeta{APIVersion: "network.openshift.io/v1", Kind: "HostSubnet"},
+							ObjectMeta:  metav1.ObjectMeta{Name: egressHost},
+							Host:        egressHost,
+							EgressCIDRs: []string{},
+							Subnet:      hostsn.Subnet,
+							HostIP:      hostsn.HostIP,
+						}
+						err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), hostSubnet)
+						if err != nil {
+							log.Error(err, "unable to update HostSubnet removing egress "+egressCIDR, "HostSubnet", hostSubnet)
+							return r.manageError(err, instance)
+						}
 					}
 				}
 			}
