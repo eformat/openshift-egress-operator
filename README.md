@@ -1,5 +1,17 @@
 # OpenShift Egress Operator
 
+## Build Image
+
+Build locally
+```
+make docker-build
+```
+
+Push to quay.io
+```
+make docker-push
+```
+
 ## Deploying the Operator
 
 This is a cluster-level operator that you can deploy in any namespace, `microsegmentation-operator` is recommended.
@@ -14,7 +26,7 @@ Deploy the cluster resources. Given that a number of elevated permissions are re
 oc apply -f deploy/
 ```
 
-### Run Locally
+## Run Locally
 
 ```
 operator-sdk up local --namespace "test" --verbose
