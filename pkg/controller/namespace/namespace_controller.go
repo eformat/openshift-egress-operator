@@ -148,7 +148,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	err = r.GetClient().Get(context.TODO(), types.NamespacedName{Name: request.NamespacedName.Name}, netns)
 	if err != nil {
 		log.Error(err, "unable to find existing NetNamespace", "NetNamespace", netns)
-		return reconcile.Result{}, nil
+		return r.manageError(err, instance)
 	}
 
 	// Reconcile NetNamespace add egressIP
@@ -200,7 +200,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 					err = r.GetClient().Get(context.TODO(), types.NamespacedName{Name: egressHost}, hostsn)
 					if err != nil {
 						log.Error(err, "unable to find existing HostSubnet "+egressHost, "HostSubnet", hostsn)
-						return reconcile.Result{}, nil
+						return r.manageError(err, instance)
 					}
 
 					hostSubnet := &networkv1.HostSubnet{
