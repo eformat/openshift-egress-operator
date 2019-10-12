@@ -77,7 +77,20 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			newValueMS, _ := e.MetaNew.GetAnnotations()[microsgmentationAnnotation]
 			oldMS := oldValueMS == "true"
 			newMS := newValueMS == "true"
-			return (oldMS != newMS)
+
+			oldValueEIP, _ := e.MetaOld.GetAnnotations()[egressIP]
+			newValueEIP, _ := e.MetaNew.GetAnnotations()[egressIP]
+			eipResult := oldValueEIP == newValueEIP
+
+			oldValueCIDR, _ := e.MetaOld.GetAnnotations()[egressCIDR]
+			newValueCIDR, _ := e.MetaNew.GetAnnotations()[egressCIDR]
+			cidrResult := oldValueCIDR == newValueCIDR
+
+			oldValueHOSTS, _ := e.MetaOld.GetAnnotations()[egressHosts]
+			newValueHOSTS, _ := e.MetaNew.GetAnnotations()[egressHosts]
+			hostsResult := oldValueHOSTS == newValueHOSTS
+
+			return (oldMS != newMS || !eipResult || !cidrResult || !hostsResult)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
 			_, ok := e.Object.(*corev1.Namespace)
