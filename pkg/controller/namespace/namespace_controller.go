@@ -62,7 +62,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// FIXME - need to add in egress annotations ?
 	isAnnotatedNamespace := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			_, ok := e.ObjectOld.(*corev1.Namespace)
